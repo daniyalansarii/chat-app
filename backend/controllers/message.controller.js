@@ -1,67 +1,54 @@
-import uploadOnCloudinary from "../config/cloudinary.js";
-import Conversation from "../models/conversation.model.js";
 import Message from "../models/message.model.js";
-import { getReceiverSocketId, io } from "../socket/socket.js";
+import User from "../models/user.model.js";
 
+// 📩 Send a message
 export const sendMessage = async (req, res) => {
   try {
-    let sender = req.userId;
-    let { receiver } = req.params;
-    let { message } = req.body;
-    let image;
+    const receiverId = req.params.id; // receiver user ID
+    const senderId = req.user._id;    // sender (from auth middleware)
 
-    if (req.file) {
-      image = await uploadOnCloudinary(req.file.path);
-    }
-
-    let conversation = await Conversation.findOne({
-      participants: { $all: [sender, receiver] },
+    // create new message
+    const newMessage = await Message.create({
+      sender: senderId,
+      receiver: receiverId,
+      message: req.body.message || "",
+      image: req.file ? req.file.filename : null, // if using multer
     });
 
-    let newMessage = await Message.create({
-      sender,
-      receiver,
-      message,
-      image,
-    });
+    // populate sender & receiver basic data
+    await newMessage.populate("sender receiver", "name username image");
 
-    if (!conversation) {
-      conversation = await Conversation.create({
-        participants: [sender, receiver],
-        messages: [newMessage._id], // must match schema
-      });
-    } else {
-      conversation.messages.push(newMessage._id);
-      await conversation.save();
-    }
-
-    // ✅ only emit to receiver
-    const receiverSocketId = getReceiverSocketId(receiver);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage);
+    // ✅ Emit socket event
+    const io = req.app.get("io");
+    if (io) {
+      // send to both sender & receiver rooms
+      io.to(senderId.toString()).emit("newMessage", newMessage);
+      io.to(receiverId.toString()).emit("newMessage", newMessage);
     }
 
     return res.status(201).json(newMessage);
   } catch (error) {
-    return res.status(500).json({ message: `send message error ${error}` });
+    console.error("Send message error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
+// 📥 Get all messages with a specific user
 export const getMessages = async (req, res) => {
   try {
-    let sender = req.userId;
-    let { receiver } = req.params;
+    const userId = req.user._id;
+    const receiverId = req.params.id;
 
-    let conversation = await Conversation.findOne({
-      participants: { $all: [sender, receiver] },
-    }).populate("messages");
+    const messages = await Message.find({
+      $or: [
+        { sender: userId, receiver: receiverId },
+        { sender: receiverId, receiver: userId },
+      ],
+    }).populate("sender receiver", "name username image");
 
-    if (!conversation) {
-      return res.status(400).json({ message: "conversation not found" });
-    }
-
-    return res.status(200).json(conversation.messages);
+    return res.status(200).json(messages);
   } catch (error) {
-    return res.status(500).json({ message: `get message error ${error}` });
+    console.error("Get messages error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
