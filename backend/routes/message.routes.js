@@ -1,7 +1,7 @@
 // routes/message.routes.js
 import express from "express";
-import { sendMessage, getMessages } from "../controllers/message.controller.js";
-import protect from "../middlewares/isAuth.js";
+import { sendMessage, getMessages } from "../controllers/message.controller.js"
+import isAuth from "../middlewares/isAuth.js";
 // if you use multer/cloudinary: import upload from "../middlewares/upload.js";
 
 const router = express.Router();
