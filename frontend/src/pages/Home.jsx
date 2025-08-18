@@ -1,16 +1,17 @@
-import React from 'react'
-import Sidebar from '../components/Sidebar'
-import Messagearea from '../components/Messagearea'
-import getMessage from '../customHooks/getMessages'
+import React from 'react';
+import Sidebar from '../components/Sidebar';
+import MessageArea from '../components/MessageArea';
+import getMessage from '../customHooks/getMessages';
 
 function Home() {
-  getMessage()
+  getMessage();
   return (
     <div className='w-full h-[100vh] flex overflow-hidden'>
-      <Sidebar/>
-      <Messagearea/>
+      <Sidebar />
+      <MessageArea />
     </div>
-  )
+  );
 }
 
-export default Home
+export default Home;
+
