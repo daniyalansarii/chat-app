@@ -9,6 +9,7 @@ export const sendMessage = async (req, res) => {
     let { receiver } = req.params;
     let { message } = req.body;
     let image;
+
     if (req.file) {
       image = await uploadOnCloudinary(req.file.path);
     }
@@ -27,23 +28,17 @@ export const sendMessage = async (req, res) => {
     if (!conversation) {
       conversation = await Conversation.create({
         participants: [sender, receiver],
-        messages: [newMessage._id], // ✅ fixed (typo: was "message")
+        messages: [newMessage._id], // must match schema
       });
     } else {
       conversation.messages.push(newMessage._id);
       await conversation.save();
     }
 
-    // ✅ Emit to both receiver & sender
+    // ✅ only emit to receiver
     const receiverSocketId = getReceiverSocketId(receiver);
-    const senderSocketId = getReceiverSocketId(sender);
-
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
-    }
-
-    if (senderSocketId) {
-      io.to(senderSocketId).emit("newMessage", newMessage);
     }
 
     return res.status(201).json(newMessage);
@@ -52,18 +47,20 @@ export const sendMessage = async (req, res) => {
   }
 };
 
-
 export const getMessages = async (req, res) => {
   try {
     let sender = req.userId;
     let { receiver } = req.params;
+
     let conversation = await Conversation.findOne({
       participants: { $all: [sender, receiver] },
     }).populate("messages");
+
     if (!conversation) {
       return res.status(400).json({ message: "conversation not found" });
     }
-    return res.status(200).json(conversation?.messages);
+
+    return res.status(200).json(conversation.messages);
   } catch (error) {
     return res.status(500).json({ message: `get message error ${error}` });
   }
