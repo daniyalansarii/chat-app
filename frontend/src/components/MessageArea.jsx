@@ -14,7 +14,7 @@ import { setMessages } from "../redux/messageslice";
 import SenderMessage from "./SenderMessage";
 import ReceiverMessage from "./ReceiverMessage";
 
-function Messagearea() {
+function MessageArea() {
   const { selectedUser, userData, socket } = useSelector((state) => state.user);
   const { messages } = useSelector((state) => state.message);
   const dispatch = useDispatch();
@@ -200,4 +200,4 @@ function Messagearea() {
   );
 }
 
-export default Messagearea;
+export default MessageArea;
