@@ -48,7 +48,8 @@ function MessageArea() {
         { withCredentials: true }
       );
 
-      dispatch(setMessages([...messages, result.data]));
+      // ✅ update with functional update
+      dispatch(setMessages((prev) => [...prev, result.data]));
       setInput("");
       setFrontendImage(null);
       setBackendImage(null);
@@ -61,12 +62,26 @@ function MessageArea() {
     setInput((prev) => prev + emojiData.emoji);
   };
 
+  // ✅ Correct socket listener
   useEffect(() => {
-    socket.on("newMessage", (mess) => {
-      dispatch(setMessages([...messages, mess]));
-    });
-    return () => socket.off();
-  }, [messages]);
+    if (!socket) return;
+
+    const handleNewMessage = (mess) => {
+      // only add if message is for this chat
+      if (
+        mess.sender === selectedUser?._id ||
+        mess.receiver === selectedUser?._id
+      ) {
+        dispatch(setMessages((prev) => [...prev, mess]));
+      }
+    };
+
+    socket.on("newMessage", handleNewMessage);
+
+    return () => {
+      socket.off("newMessage", handleNewMessage);
+    };
+  }, [socket, selectedUser, dispatch]);
 
   return (
     <div
@@ -159,7 +174,7 @@ function MessageArea() {
                 <FaImage className="w-6 h-6 text-white cursor-pointer" />
               </div>
               {(input.length > 0 || backendImage != null) && (
-                <button>
+                <button type="submit">
                   <IoMdSend className="w-6 h-6 text-white cursor-pointer" />
                 </button>
               )}
@@ -192,7 +207,9 @@ function MessageArea() {
               alt="User"
               className="w-24 h-24 rounded-full mx-auto mb-4"
             />
-            <h2 className="text-xl font-semibold">{selectedUser?.name || "User"}</h2>
+            <h2 className="text-xl font-semibold">
+              {selectedUser?.name || "User"}
+            </h2>
           </div>
         </div>
       )}
