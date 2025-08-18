@@ -1,51 +1,50 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { serverUrl } from "../main";
 import { useDispatch } from "react-redux";
 import { setUserData } from "../redux/userSlice";
-import { serverUrl } from "../main";
 
 function Login() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
+
     try {
-      const result = await axios.post(
+      const response = await axios.post(
         `${serverUrl}/api/auth/login`,
         { email, password },
         { withCredentials: true }
       );
 
-      dispatch(setUserData(result.data));
+      dispatch(setUserData(response.data));
       navigate("/");
-
-      setEmail("");
-      setPassword("");
-      setErr("");
-      setLoading(false);
-    } catch (error) {
-      setErr(error?.response?.data?.message || "Something went wrong");
+    } catch (err) {
+      console.log(err);
+      setError(err?.response?.data?.message || "Something went wrong");
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full h-screen bg-slate-200 flex items-center justify-center">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6 flex flex-col gap-4">
-        <div className="w-full text-center mb-4">
-          <h1 className="text-gray-600 font-bold text-2xl">
-            Welcome Back to <span className="text-blue-500">BuzzMates</span>
-          </h1>
-        </div>
+    <div className="w-full h-screen flex items-center justify-center bg-slate-200">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
+        <h1 className="text-2xl font-bold text-center mb-6">
+          Login to <span className="text-blue-500">Buzzmates</span>
+        </h1>
+
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
         <form className="flex flex-col gap-4" onSubmit={handleLogin}>
           <input
@@ -53,8 +52,8 @@ function Login() {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg outline-none"
             required
+            className="border p-2 rounded"
           />
 
           <div className="relative">
@@ -63,33 +62,31 @@ function Login() {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg outline-none"
               required
+              className="border p-2 rounded w-full"
             />
             <span
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-4 top-2 cursor-pointer text-blue-500 font-semibold"
+              className="absolute right-2 top-2 cursor-pointer text-blue-500 font-semibold"
             >
               {showPassword ? "Hide" : "Show"}
             </span>
           </div>
 
-          {err && <p className="text-red-500">{err}</p>}
-
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600"
+            className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition"
           >
-            {loading ? "Logging In..." : "Login"}
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
-        <p className="text-center">
+        <p className="text-center mt-4">
           Don't have an account?{" "}
           <span
-            onClick={() => navigate("/signup")}
             className="text-blue-500 font-bold cursor-pointer"
+            onClick={() => navigate("/signup")}
           >
             Sign Up
           </span>
