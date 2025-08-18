@@ -16,6 +16,7 @@ export const sendMessage = async (req, res) => {
     let conversation = await Conversation.findOne({
       participants: { $all: [sender, receiver] },
     });
+
     let newMessage = await Message.create({
       sender,
       receiver,
@@ -26,17 +27,23 @@ export const sendMessage = async (req, res) => {
     if (!conversation) {
       conversation = await Conversation.create({
         participants: [sender, receiver],
-        message: [newMessage._id],
+        messages: [newMessage._id], // ✅ fixed (typo: was "message")
       });
     } else {
       conversation.messages.push(newMessage._id);
       await conversation.save();
     }
 
-    const receiverSocketId = getReceiverSocketId(receiver)
+    // ✅ Emit to both receiver & sender
+    const receiverSocketId = getReceiverSocketId(receiver);
+    const senderSocketId = getReceiverSocketId(sender);
 
     if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage",newMessage)
+      io.to(receiverSocketId).emit("newMessage", newMessage);
+    }
+
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("newMessage", newMessage);
     }
 
     return res.status(201).json(newMessage);
@@ -44,6 +51,7 @@ export const sendMessage = async (req, res) => {
     return res.status(500).json({ message: `send message error ${error}` });
   }
 };
+
 
 export const getMessages = async (req, res) => {
   try {
