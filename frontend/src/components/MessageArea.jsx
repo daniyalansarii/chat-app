@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { IoMdArrowBack } from "react-icons/io";
 import dp from "../assets/dp.webp";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
 import { setSelectedUser } from "../redux/userSlice";
 import { MdOutlineEmojiEmotions } from "react-icons/md";
 import { FaImage } from "react-icons/fa";
@@ -18,7 +17,6 @@ function MessageArea() {
   const { selectedUser, userData, socket } = useSelector((state) => state.user);
   const { messages } = useSelector((state) => state.message);
   const dispatch = useDispatch();
-  const navigate = useNavigate();
 
   const [showPicker, setShowPicker] = useState(false);
   const [input, setInput] = useState("");
@@ -42,14 +40,13 @@ function MessageArea() {
       formData.append("message", input);
       if (backendImage) formData.append("image", backendImage);
 
-      const result = await axios.post(
+      await axios.post(
         `${serverUrl}/api/message/send/${selectedUser._id}`,
         formData,
         { withCredentials: true }
       );
 
-      // ✅ update with functional update
-      dispatch(setMessages((prev) => [...prev, result.data]));
+      // ❌ No direct Redux update here (socket will handle it)
       setInput("");
       setFrontendImage(null);
       setBackendImage(null);
@@ -62,12 +59,10 @@ function MessageArea() {
     setInput((prev) => prev + emojiData.emoji);
   };
 
-  // ✅ Correct socket listener
   useEffect(() => {
     if (!socket) return;
 
     const handleNewMessage = (mess) => {
-      // only add if message is for this chat
       if (
         mess.sender === selectedUser?._id ||
         mess.receiver === selectedUser?._id
@@ -156,7 +151,7 @@ function MessageArea() {
               <input
                 type="file"
                 hidden
-                accept="images/*"
+                accept="image/*"
                 ref={image}
                 onChange={handleImage}
               />
