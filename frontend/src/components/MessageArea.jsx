@@ -25,6 +25,13 @@ function MessageArea() {
   const [showUserProfile, setShowUserProfile] = useState(false);
 
   const image = useRef();
+  const messagesEndRef = useRef();
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   const handleImage = (e) => {
     const file = e.target.files[0];
@@ -34,7 +41,8 @@ function MessageArea() {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (input.length === 0 && backendImage == null) return;
+    if (!input.trim() && !backendImage) return;
+
     try {
       const formData = new FormData();
       formData.append("message", input);
@@ -46,7 +54,6 @@ function MessageArea() {
         { withCredentials: true }
       );
 
-      // ❌ No direct Redux update here (socket will handle it)
       setInput("");
       setFrontendImage(null);
       setBackendImage(null);
@@ -59,6 +66,7 @@ function MessageArea() {
     setInput((prev) => prev + emojiData.emoji);
   };
 
+  // Socket listener for new messages
   useEffect(() => {
     if (!socket) return;
 
@@ -67,16 +75,17 @@ function MessageArea() {
         mess.sender === selectedUser?._id ||
         mess.receiver === selectedUser?._id
       ) {
-        dispatch(setMessages((prev) => [...prev, mess]));
+        dispatch(setMessages(mess));
       }
     };
 
     socket.on("newMessage", handleNewMessage);
-
-    return () => {
-      socket.off("newMessage", handleNewMessage);
-    };
+    return () => socket.off("newMessage", handleNewMessage);
   }, [socket, selectedUser, dispatch]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, frontendImage]);
 
   return (
     <div
@@ -106,7 +115,7 @@ function MessageArea() {
           </div>
 
           {/* Chat Area */}
-          <div className="w-full h-[80vh] overflow-auto flex flex-col py-[30px] px-5 shadow-lg shadow-gray-400 gap-5">
+          <div className="w-full h-[80vh] overflow-auto flex flex-col py-[30px] px-5 gap-5">
             {showPicker && (
               <div className="absolute bottom-[120px] left-5 z-50">
                 <EmojiPicker
@@ -133,6 +142,7 @@ function MessageArea() {
                   />
                 )
               )}
+            <div ref={messagesEndRef}></div>
           </div>
 
           {/* Message Input */}
@@ -140,7 +150,7 @@ function MessageArea() {
             {frontendImage && (
               <img
                 src={frontendImage}
-                className="absolute rounded-lg shadow-gray-400 bottom-[150px] right-[20%] w-[80px]"
+                className="fixed rounded-lg shadow-gray-400 bottom-32 right-5 w-[80px]"
                 alt="preview"
               />
             )}
@@ -168,8 +178,8 @@ function MessageArea() {
               <div onClick={() => image.current.click()}>
                 <FaImage className="w-6 h-6 text-white cursor-pointer" />
               </div>
-              {(input.length > 0 || backendImage != null) && (
-                <button type="submit">
+              {(input.trim() || backendImage) && (
+                <button type="submit" className="flex items-center justify-center">
                   <IoMdSend className="w-6 h-6 text-white cursor-pointer" />
                 </button>
               )}
