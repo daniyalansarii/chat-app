@@ -40,29 +40,35 @@ function MessageArea() {
   };
 
   const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!input.trim() && !backendImage) return;
+  e.preventDefault();
+  if (!input.trim() && !backendImage) return;
 
-    try {
-      const formData = new FormData();
-      formData.append("message", input);
-      if (backendImage) formData.append("image", backendImage);
+  try {
+    const formData = new FormData();
+    formData.append("message", input);
+    if (backendImage) formData.append("image", backendImage);
 
-      const result = await axios.post(
-        `${serverUrl}/api/message/send/${selectedUser._id}`,
-        formData,
-        { withCredentials: true }
-      );
+    const result = await axios.post(
+      `${serverUrl}/api/message/send/${selectedUser._id}`,
+      formData,
+      { withCredentials: true }
+    );
 
-      dispatch(addMessage(result.data));
+    // Add message to your own Redux store
+    dispatch(addMessage(result.data));
 
-      setInput("");
-      setFrontendImage(null);
-      setBackendImage(null);
-    } catch (error) {
-      console.log(error);
-    }
-  };
+    // 🔥 Emit message to socket for real-time delivery
+    socket.emit("newMessage", result.data);
+
+    // Reset input and image preview
+    setInput("");
+    setFrontendImage(null);
+    setBackendImage(null);
+  } catch (error) {
+    console.log("Message send error:", error);
+  }
+};
+
 
   const onEmojiClick = (emojiData) => {
     setInput((prev) => prev + emojiData.emoji);
