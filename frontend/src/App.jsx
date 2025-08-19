@@ -2,45 +2,56 @@ import React, { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import SignUp from "./pages/SignUp";
 import Login from "./pages/Login";
-import getCurrentUser from "./customHooks/getCurrentUser";
-import { useDispatch, useSelector } from "react-redux";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
+import getCurrentUser from "./customHooks/getCurrentUser";
 import getOtherUsers from "./customHooks/getOtherUsers";
-import {io} from "socket.io-client"
+import { useDispatch, useSelector } from "react-redux";
+import { io } from "socket.io-client";
 import { serverUrl } from "./main";
 import { setOnlineUsers, setSocket } from "./redux/userSlice";
 
 function App() {
-  getCurrentUser();
-  getOtherUsers();
-  let { userData,socket,onlineUsers } = useSelector((state) => state.user);
-  let dispatch = useDispatch()
+  const dispatch = useDispatch();
+  const { userData, socket } = useSelector((state) => state.user);
 
+  // Load current user & other users
   useEffect(() => {
-    if (userData) {
-       const socketio = io(`${serverUrl}`,{
-      query:{
-        userId:userData?._id
-      },
+    getCurrentUser();
+    getOtherUsers();
+  }, []);
 
-    })
-    dispatch(setSocket(socketio))
-    socketio.on("getOnlineUsers",(users)=>{
-      dispatch(setOnlineUsers(users))
-    })
-    return ()=>{
-      socketio.close()
-    }
-    }else{
+  // Socket initialization
+  useEffect(() => {
+    if (!userData) {
+      // Cleanup if no user
       if (socket) {
-        socket.close()
-        dispatch(setSocket(null))
+        socket.disconnect();
+        dispatch(setSocket(null));
       }
+      return;
     }
-   
-  }, [userData])
-  
+
+    // Initialize socket
+    const socketio = io(serverUrl, {
+      auth: { userId: userData._id }, // pass userId for backend identification
+      transports: ["websocket"],
+    });
+
+    dispatch(setSocket(socketio));
+
+    // Listen for online users
+    socketio.on("getOnlineUsers", (users) => {
+      dispatch(setOnlineUsers(users));
+    });
+
+    // Cleanup on unmount or user change
+    return () => {
+      socketio.disconnect();
+      dispatch(setSocket(null));
+    };
+  }, [userData, dispatch]);
+
   return (
     <div>
       <Routes>
