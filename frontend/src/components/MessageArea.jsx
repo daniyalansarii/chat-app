@@ -40,41 +40,35 @@ function MessageArea() {
   };
 
   const handleSendMessage = async (e) => {
-  e.preventDefault();
-  if (!input.trim() && !backendImage) return;
+    e.preventDefault();
+    if (!input.trim() && !backendImage) return;
 
-  try {
-    const formData = new FormData();
-    formData.append("message", input);
-    if (backendImage) formData.append("image", backendImage);
+    try {
+      const formData = new FormData();
+      formData.append("message", input);
+      if (backendImage) formData.append("image", backendImage);
 
-    const result = await axios.post(
-      `${serverUrl}/api/message/send/${selectedUser._id}`,
-      formData,
-      { withCredentials: true }
-    );
+      const result = await axios.post(
+        `${serverUrl}/api/message/send/${selectedUser._id}`,
+        formData,
+        { withCredentials: true }
+      );
 
-    // Add message to your own Redux store
-    dispatch(addMessage(result.data));
+      dispatch(addMessage(result.data));
+      socket.emit("newMessage", result.data);
 
-    // 🔥 Emit message to socket for real-time delivery
-    socket.emit("newMessage", result.data);
-
-    // Reset input and image preview
-    setInput("");
-    setFrontendImage(null);
-    setBackendImage(null);
-  } catch (error) {
-    console.log("Message send error:", error);
-  }
-};
-
+      setInput("");
+      setFrontendImage(null);
+      setBackendImage(null);
+    } catch (error) {
+      console.log("Message send error:", error);
+    }
+  };
 
   const onEmojiClick = (emojiData) => {
     setInput((prev) => prev + emojiData.emoji);
   };
 
-  // Socket listener for real-time messages
   useEffect(() => {
     if (!socket) return;
 
@@ -141,9 +135,19 @@ function MessageArea() {
           )}
           {messages.map((mess) =>
             mess.sender === userData._id ? (
-              <SenderMessage key={mess._id} image={mess.image} message={mess.message} />
+              <SenderMessage
+                key={mess._id}
+                id={mess._id}
+                image={mess.image}
+                message={mess.message}
+              />
             ) : (
-              <ReceiverMessage key={mess._id} image={mess.image} message={mess.message} />
+              <ReceiverMessage
+                key={mess._id}
+                id={mess._id}
+                image={mess.image}
+                message={mess.message}
+              />
             )
           )}
           <div ref={messagesEndRef}></div>
