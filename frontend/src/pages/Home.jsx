@@ -1,11 +1,11 @@
 import React from 'react';
 import Sidebar from '../components/Sidebar';
 import MessageArea from '../components/MessageArea';
-import getMessage from '../customHooks/getMessages';
+import useMessages from './customHooks/useMessages';
 
 function Home() {
  useEffect(() => {
-  getMessage();
+  useMessages();
 }, []);
   return (
     <div className='w-full h-[100vh] flex overflow-hidden'>
