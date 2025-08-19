@@ -2,32 +2,35 @@ import http from "http";
 import express from "express";
 import { Server } from "socket.io";
 
-let app = express();
+const app = express();
 const server = http.createServer(app);
 
+// Map to track online users
+const userSocketMap = {};
+
+// Socket.io setup
 const io = new Server(server, {
   cors: {
-    origin: "https://chat-appp-ktmw.onrender.com",
+    origin: "https://chat-appp-ktmw.onrender.com", // frontend URL
     credentials: true,
   },
 });
 
-const userSocketMap = {};
-
-export const getReceiverSocketId = (receiverId) => {
-  return userSocketMap[receiverId];
-};
+// Helper to get socket id by userId
+export const getReceiverSocketId = (userId) => userSocketMap[userId];
 
 io.on("connection", (socket) => {
-  const userId = socket.handshake.query.userId;
+  const userId = socket.handshake.auth?.userId;
   if (userId) {
     userSocketMap[userId] = socket.id;
   }
 
+  // Emit all online users
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
+  // Listen for disconnection
   socket.on("disconnect", () => {
-    delete userSocketMap[userId];
+    if (userId) delete userSocketMap[userId];
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });
 });
