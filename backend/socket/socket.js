@@ -1,5 +1,3 @@
-// src/backend/socket/socket.js
-
 import { Server } from "socket.io";
 
 let io;
@@ -15,7 +13,6 @@ export const initSocket = (server, frontendUrl) => {
 
   io.on("connection", (socket) => {
     const userId = socket.handshake.query.userId;
-
     if (userId) {
       onlineUsers.set(userId, socket.id);
       io.emit("getOnlineUsers", Array.from(onlineUsers.keys()));
