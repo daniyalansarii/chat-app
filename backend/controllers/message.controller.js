@@ -1,4 +1,3 @@
-// controllers/message.controller.js
 import uploadOnCloudinary from "../config/cloudinary.js";
 import Conversation from "../models/conversation.model.js";
 import Message from "../models/message.model.js";
@@ -6,24 +5,25 @@ import { getReceiverSocketId, io } from "../socket/socket.js";
 
 export const sendMessage = async (req, res) => {
   try {
-    const sender = req.userId;                 // set by your auth middleware
-    const receiver = req.params.receiver;      // from route /send/:receiver
+    const sender = req.userId; // set by auth middleware
+    const receiver = req.params.receiver;
     const { message } = req.body;
 
-    let image;
+    let imageUrl = null;
     if (req.file) {
-      image = await uploadOnCloudinary(req.file.path);
+      const uploaded = await uploadOnCloudinary(req.file.path);
+      imageUrl = uploaded?.secure_url || null;
     }
 
-    // Create message first
+    // Create new message
     const newMessage = await Message.create({
       sender,
       receiver,
       message,
-      image,
+      image: imageUrl,
     });
 
-    // Find or create conversation and push message
+    // Find or create conversation
     let conversation = await Conversation.findOne({
       participants: { $all: [sender, receiver] },
     });
@@ -38,21 +38,22 @@ export const sendMessage = async (req, res) => {
       await conversation.save();
     }
 
-    // Emit to receiver (if online) and to sender (so sender UI updates instantly)
-    const receiverSocketId = getReceiverSocketId(receiver?.toString());
+    // Emit to receiver if online
+    const receiverSocketId = getReceiverSocketId(receiver.toString());
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
     }
 
-    const senderSocketId = getReceiverSocketId(sender?.toString());
+    // Emit to sender for instant UI update
+    const senderSocketId = getReceiverSocketId(sender.toString());
     if (senderSocketId) {
       io.to(senderSocketId).emit("newMessage", newMessage);
     }
 
     return res.status(201).json(newMessage);
   } catch (error) {
-    console.error("send message error:", error);
-    return res.status(500).json({ message: `send message error: ${error.message}` });
+    console.error("sendMessage error:", error);
+    return res.status(500).json({ message: "Failed to send message", error: error.message });
   }
 };
 
@@ -65,12 +66,13 @@ export const getMessages = async (req, res) => {
       participants: { $all: [sender, receiver] },
     }).populate("messages");
 
-    // Return empty list if no conversation yet
-    if (!conversation) return res.status(200).json([]);
+    if (!conversation) {
+      return res.status(200).json([]);
+    }
 
     return res.status(200).json(conversation.messages);
   } catch (error) {
-    console.error("get message error:", error);
-    return res.status(500).json({ message: `get message error: ${error.message}` });
+    console.error("getMessages error:", error);
+    return res.status(500).json({ message: "Failed to fetch messages", error: error.message });
   }
 };
