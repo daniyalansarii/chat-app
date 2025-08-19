@@ -1,10 +1,11 @@
+// customHooks/useCurrentUser.js
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { setUserData } from "../redux/userSlice.js";
 import axios from "axios";
 import { serverUrl } from "../main.jsx";
 
-const getCurrentUser = () => {
+const useCurrentUser = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -23,4 +24,4 @@ const getCurrentUser = () => {
   }, [dispatch]);
 };
 
-export default getCurrentUser;
+export default useCurrentUser;
