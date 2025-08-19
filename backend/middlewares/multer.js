@@ -1,12 +1,23 @@
-import multer from 'multer'
+import multer from "multer";
 
+// Storage configuration
 const storage = multer.diskStorage({
-    destination:(req,file,cb)=>{
-        cb(null,"./public")
-    },
-    filename:(req,file,cb)=>{
-        cb(null,file.originalname)
-    }
-})
+  destination: (req, file, cb) => {
+    cb(null, "./public"); // Upload folder
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueName);
+  },
+});
 
-export const upload = multer({storage}) 
+// File filter to allow only images
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed!"), false);
+  }
+};
+
+export const upload = multer({ storage, fileFilter });
