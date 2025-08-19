@@ -25,14 +25,21 @@ io.on("connection", (socket) => {
     userSocketMap[userId] = socket.id;
   }
 
-  // Emit all online users
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
-  // Listen for disconnection
+  // 🔥 Listen for newMessage and send to receiver only
+  socket.on("newMessage", (data) => {
+    const receiverSocketId = getReceiverSocketId(data.receiver);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", data);
+    }
+  });
+
   socket.on("disconnect", () => {
     if (userId) delete userSocketMap[userId];
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });
 });
+
 
 export { app, server, io };
