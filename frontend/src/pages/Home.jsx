@@ -1,12 +1,11 @@
 import React from 'react';
 import Sidebar from '../components/Sidebar';
 import MessageArea from '../components/MessageArea';
-import useMessages from './customHooks/useMessages';
+import useMessages from '../customHooks/useMessages'; // correct relative path
 
 function Home() {
- useEffect(() => {
-  useMessages();
-}, []);
+  useMessages(); // call directly
+
   return (
     <div className='w-full h-[100vh] flex overflow-hidden'>
       <Sidebar />
@@ -16,4 +15,3 @@ function Home() {
 }
 
 export default Home;
-
