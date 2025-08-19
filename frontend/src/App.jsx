@@ -31,7 +31,7 @@ function App() {
     }
 
     const socketio = io(serverUrl, {
-      auth: { userId: userData._id }, // backend ke liye auth
+      query: { userId: userData._id }, // backend ke liye auth
       transports: ["websocket"],
     });
 
