@@ -1,3 +1,4 @@
+// components/MessageArea.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { IoMdArrowBack } from "react-icons/io";
 import dp from "../assets/dp.webp";
@@ -9,7 +10,7 @@ import { IoMdSend } from "react-icons/io";
 import EmojiPicker from "emoji-picker-react";
 import axios from "axios";
 import { serverUrl } from "../main";
-import { setMessages, appendMessage } from "../redux/messageslice";
+import { setMessages, addMessage } from "../redux/messageslice";
 import SenderMessage from "./SenderMessage";
 import ReceiverMessage from "./ReceiverMessage";
 
@@ -24,9 +25,10 @@ function MessageArea() {
   const [backendImage, setBackendImage] = useState(null);
   const [showUserProfile, setShowUserProfile] = useState(false);
 
-  const image = useRef();
+  const imageRef = useRef();
   const messagesEndRef = useRef();
 
+  // Scroll to bottom
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -35,8 +37,9 @@ function MessageArea() {
 
   const handleImage = (e) => {
     const file = e.target.files[0];
-    setBackendImage(file);
+    if (!file) return;
     setFrontendImage(URL.createObjectURL(file));
+    setBackendImage(file);
   };
 
   const handleSendMessage = async (e) => {
@@ -54,13 +57,12 @@ function MessageArea() {
         { withCredentials: true }
       );
 
-      dispatch(appendMessage(data)); // add message immediately
+      dispatch(addMessage(data)); // Add message to redux
       setInput("");
       setFrontendImage(null);
       setBackendImage(null);
-      scrollToBottom();
     } catch (error) {
-      console.log(error);
+      console.error("Send message error:", error);
     }
   };
 
@@ -68,16 +70,16 @@ function MessageArea() {
     setInput((prev) => prev + emojiData.emoji);
   };
 
-  // Socket listener for new messages
+  // Listen for real-time messages via socket
   useEffect(() => {
     if (!socket) return;
 
-    const handleNewMessage = (mess) => {
+    const handleNewMessage = (msg) => {
       if (
-        mess.sender === selectedUser?._id ||
-        mess.receiver === selectedUser?._id
+        msg.sender === selectedUser?._id ||
+        msg.receiver === selectedUser?._id
       ) {
-        dispatch(appendMessage(mess));
+        dispatch(addMessage(msg));
       }
     };
 
@@ -89,46 +91,52 @@ function MessageArea() {
     scrollToBottom();
   }, [messages, frontendImage]);
 
-  return (
-    <div
-      className={`lg:w-[70%] relative ${
-        selectedUser ? "flex" : "hidden"
-      } lg:flex w-full h-full bg-slate-200 border-l-2 border-gray-300`}
-    >
-      {selectedUser ? (
-        <div className="w-full h-[100vh] flex flex-col">
-          {/* Header */}
-          <div className="w-full h-[100px] gap-5 bg-[#2fbdec] rounded-b-[20px] shadow-gray-400 shadow-lg flex items-center px-5">
-            <div
-              className="cursor-pointer"
-              onClick={() => dispatch(setSelectedUser(null))}
-            >
-              <IoMdArrowBack className="w-6 text-white h-6" />
-            </div>
-            <div
-              className="w-[50px] shadow-lg shadow-gray-500 h-[50px] rounded-full overflow-hidden flex justify-center items-center cursor-pointer bg-white"
-              onClick={() => setShowUserProfile(true)}
-            >
-              <img src={selectedUser?.image || dp} className="h-[100%]" alt="" />
-            </div>
-            <h1 className="text-white font-semibold text-[20px]">
-              {selectedUser?.name || "user"}
-            </h1>
-          </div>
+  if (!selectedUser) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center">
+        <h1 className="text-gray-700 font-bold text-[50px]">
+          Welcome to BuzzMates
+        </h1>
+        <span className="font-semibold text-gray-700 text-[30px]">
+          Stay in Touch with Your Mates!
+        </span>
+      </div>
+    );
+  }
 
-          {/* Chat Area */}
-          <div className="w-full h-[80vh] overflow-auto flex flex-col py-[30px] px-5 gap-5">
-            {showPicker && (
-              <div className="absolute bottom-[120px] left-5 z-50">
-                <EmojiPicker
-                  className="shadow-lg"
-                  onEmojiClick={onEmojiClick}
-                  width={250}
-                  height={350}
-                />
-              </div>
-            )}
-            {messages.map((mess) =>
+  return (
+    <div className="lg:w-[70%] relative flex w-full h-full bg-slate-200 border-l-2 border-gray-300">
+      {/* Chat Column */}
+      <div className="w-full h-[100vh] flex flex-col">
+        {/* Header */}
+        <div className="w-full h-[100px] gap-5 bg-[#2fbdec] rounded-b-[20px] shadow-gray-400 shadow-lg flex items-center px-5">
+          <div
+            className="cursor-pointer"
+            onClick={() => dispatch(setSelectedUser(null))}
+          >
+            <IoMdArrowBack className="w-6 text-white h-6" />
+          </div>
+          <div
+            className="w-[50px] shadow-lg shadow-gray-500 h-[50px] rounded-full overflow-hidden flex justify-center items-center cursor-pointer bg-white"
+            onClick={() => setShowUserProfile(true)}
+          >
+            <img src={selectedUser?.image || dp} className="h-[100%]" alt="" />
+          </div>
+          <h1 className="text-white font-semibold text-[20px]">
+            {selectedUser?.name || "user"}
+          </h1>
+        </div>
+
+        {/* Messages */}
+        <div className="w-full h-[80vh] overflow-auto flex flex-col py-[30px] px-5 gap-5">
+          {showPicker && (
+            <div className="absolute bottom-[120px] left-5 z-50">
+              <EmojiPicker onEmojiClick={onEmojiClick} width={250} height={350} />
+            </div>
+          )}
+
+          {messages &&
+            messages.map((mess) =>
               mess.sender === userData._id ? (
                 <SenderMessage
                   key={mess._id}
@@ -143,60 +151,50 @@ function MessageArea() {
                 />
               )
             )}
-            <div ref={messagesEndRef}></div>
-          </div>
+          <div ref={messagesEndRef}></div>
+        </div>
 
-          {/* Message Input */}
-          <div className="w-full lg:w-[70%] h-[100px] fixed bottom-[20px] flex items-center justify-center">
-            {frontendImage && (
-              <img
-                src={frontendImage}
-                className="fixed rounded-lg shadow-gray-400 bottom-32 right-5 w-[80px]"
-                alt="preview"
-              />
+        {/* Input */}
+        <div className="w-full lg:w-[70%] h-[100px] fixed bottom-[20px] flex items-center justify-center">
+          {frontendImage && (
+            <img
+              src={frontendImage}
+              className="fixed rounded-lg shadow-gray-400 bottom-32 right-5 w-[80px]"
+              alt="preview"
+            />
+          )}
+          <form
+            className="w-[95%] lg:w-[70%] h-[60px] bg-[#2fbdec] rounded-full shadow-gray-400 shadow-lg flex items-center gap-5 px-5"
+            onSubmit={handleSendMessage}
+          >
+            <input
+              type="file"
+              hidden
+              accept="image/*"
+              ref={imageRef}
+              onChange={handleImage}
+            />
+            <div onClick={() => setShowPicker((prev) => !prev)}>
+              <MdOutlineEmojiEmotions className="w-6 h-6 text-white cursor-pointer" />
+            </div>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              type="text"
+              className="w-full bg-transparent h-full px-[10px] outline-none border-0 text-[19px] text-white placeholder:text-white"
+              placeholder="Message"
+            />
+            <div onClick={() => imageRef.current.click()}>
+              <FaImage className="w-6 h-6 text-white cursor-pointer" />
+            </div>
+            {(input.trim() || backendImage) && (
+              <button type="submit" className="flex items-center justify-center">
+                <IoMdSend className="w-6 h-6 text-white cursor-pointer" />
+              </button>
             )}
-            <form
-              className="w-[95%] lg:w-[70%] h-[60px] bg-[#2fbdec] rounded-full shadow-gray-400 shadow-lg flex items-center gap-5 px-5"
-              onSubmit={handleSendMessage}
-            >
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                ref={image}
-                onChange={handleImage}
-              />
-              <div onClick={() => setShowPicker((prev) => !prev)}>
-                <MdOutlineEmojiEmotions className="w-6 h-6 text-white cursor-pointer" />
-              </div>
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                type="text"
-                className="w-full bg-transparent h-full px-[10px] outline-none border-0 text-[19px] text-white placeholder:text-white"
-                placeholder="Message"
-              />
-              <div onClick={() => image.current.click()}>
-                <FaImage className="w-6 h-6 text-white cursor-pointer" />
-              </div>
-              {(input.trim() || backendImage) && (
-                <button type="submit" className="flex items-center justify-center">
-                  <IoMdSend className="w-6 h-6 text-white cursor-pointer" />
-                </button>
-              )}
-            </form>
-          </div>
+          </form>
         </div>
-      ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center">
-          <h1 className="text-gray-700 font-bold text-[50px]">
-            Welcome to BuzzMates
-          </h1>
-          <span className="font-semibold text-gray-700 text-[30px]">
-            Stay in Touch with Your Mates!
-          </span>
-        </div>
-      )}
+      </div>
 
       {/* User Profile Modal */}
       {showUserProfile && (
