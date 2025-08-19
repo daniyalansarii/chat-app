@@ -5,7 +5,7 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import useCurrentUser from "../customHooks/useCurrentUser";
-import getOtherUsers from "./customHooks/getOtherUsers";
+import useOtherUsers from "../customHooks/useOtherUsers";
 import { useDispatch, useSelector } from "react-redux";
 import { io } from "socket.io-client";
 import { serverUrl } from "./main";
@@ -15,16 +15,13 @@ function App() {
   const dispatch = useDispatch();
   const { userData, socket } = useSelector((state) => state.user);
 
-  // Load current user & other users
-  useEffect(() => {
-    useCurrentUser();
-    getOtherUsers();
-  }, []);
+  // ✅ Call custom hooks here
+  useCurrentUser();
+  useOtherUsers();
 
   // Socket initialization
   useEffect(() => {
     if (!userData) {
-      // Cleanup if no user
       if (socket) {
         socket.disconnect();
         dispatch(setSocket(null));
@@ -32,20 +29,17 @@ function App() {
       return;
     }
 
-    // Initialize socket
     const socketio = io(serverUrl, {
-      auth: { userId: userData._id }, // pass userId for backend identification
+      query: { userId: userData._id }, // backend ke liye query
       transports: ["websocket"],
     });
 
     dispatch(setSocket(socketio));
 
-    // Listen for online users
     socketio.on("getOnlineUsers", (users) => {
       dispatch(setOnlineUsers(users));
     });
 
-    // Cleanup on unmount or user change
     return () => {
       socketio.disconnect();
       dispatch(setSocket(null));
@@ -57,7 +51,7 @@ function App() {
       <Routes>
         <Route
           path="/signup"
-          element={!userData ? <SignUp /> : <Navigate to="/profile" />}
+          element={!userData ? <SignUp /> : <Navigate to="/" />}
         />
         <Route
           path="/login"
