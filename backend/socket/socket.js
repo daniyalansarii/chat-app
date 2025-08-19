@@ -1,45 +1,37 @@
-import http from "http";
-import express from "express";
+// src/backend/socket/socket.js
+
 import { Server } from "socket.io";
 
-const app = express();
-const server = http.createServer(app);
+let io;
+const onlineUsers = new Map(); // userId => socketId
 
-// Map to track online users
-const userSocketMap = {};
+export const initSocket = (server, frontendUrl) => {
+  io = new Server(server, {
+    cors: {
+      origin: frontendUrl,
+      credentials: true,
+    },
+  });
 
-// Socket.io setup
-const io = new Server(server, {
-  cors: {
-    origin: "https://chat-appp-ktmw.onrender.com", // frontend URL
-    credentials: true,
-  },
-});
+  io.on("connection", (socket) => {
+    const userId = socket.handshake.query.userId;
 
-// Helper to get socket id by userId
-export const getReceiverSocketId = (userId) => userSocketMap[userId];
-
-io.on("connection", (socket) => {
-  const userId = socket.handshake.auth?.userId;
-  if (userId) {
-    userSocketMap[userId] = socket.id;
-  }
-
-  io.emit("getOnlineUsers", Object.keys(userSocketMap));
-
-  // 🔥 Listen for newMessage and send to receiver only
-  socket.on("newMessage", (data) => {
-    const receiverSocketId = getReceiverSocketId(data.receiver);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", data);
+    if (userId) {
+      onlineUsers.set(userId, socket.id);
+      io.emit("getOnlineUsers", Array.from(onlineUsers.keys()));
     }
+
+    socket.on("disconnect", () => {
+      if (userId) {
+        onlineUsers.delete(userId);
+        io.emit("getOnlineUsers", Array.from(onlineUsers.keys()));
+      }
+    });
   });
+};
 
-  socket.on("disconnect", () => {
-    if (userId) delete userSocketMap[userId];
-    io.emit("getOnlineUsers", Object.keys(userSocketMap));
-  });
-});
+export const getReceiverSocketId = (userId) => {
+  return onlineUsers.get(userId);
+};
 
-
-export { app, server, io };
+export { io };
