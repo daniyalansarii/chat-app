@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import SignUp from "./pages/SignUp";
@@ -15,7 +16,7 @@ function App() {
   const dispatch = useDispatch();
   const { userData, socket } = useSelector((state) => state.user);
 
-  // ✅ Call custom hooks here
+  // Load current user and other users via custom hooks
   useCurrentUser();
   useOtherUsers();
 
@@ -30,12 +31,13 @@ function App() {
     }
 
     const socketio = io(serverUrl, {
-      query: { userId: userData._id }, // backend ke liye query
+      auth: { userId: userData._id }, // backend ke liye auth
       transports: ["websocket"],
     });
 
     dispatch(setSocket(socketio));
 
+    // Listen for online users
     socketio.on("getOnlineUsers", (users) => {
       dispatch(setOnlineUsers(users));
     });
