@@ -22,6 +22,14 @@ function Sidebar() {
   const [input, setInput] = useState("");
   const [search, setSearch] = useState(false);
 
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (input.trim()) handleSearch();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [input]);
+
   const handleLogout = async () => {
     try {
       await axios.get(`${serverUrl}/api/auth/logout`, {
@@ -39,9 +47,7 @@ function Sidebar() {
     try {
       const result = await axios.get(
         `${serverUrl}/api/user/search?query=${input}`,
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
       dispatch(setSearchData(result.data));
     } catch (error) {
@@ -49,17 +55,9 @@ function Sidebar() {
     }
   };
 
-  useEffect(() => {
-    if (input) {
-      handleSearch();
-    }
-  }, [input]);
-
   return (
     <div
-      className={`lg:w-[30%] ${
-        !selectedUser ? "block" : "hidden"
-      } lg:block overflow-hidden w-full h-full bg-slate-200 relative`}
+      className={`lg:w-[30%] ${!selectedUser ? "block" : "hidden"} lg:block overflow-hidden w-full h-full bg-slate-200 relative`}
     >
       {/* Logout Button */}
       <div
@@ -79,7 +77,8 @@ function Sidebar() {
               onClick={() => {
                 dispatch(setSelectedUser(user));
                 setInput("");
-                setSearch(false)
+                setSearch(false);
+                dispatch(setSearchData([]));
               }}
             >
               <div className="w-[60px] h-[60px] rounded-full overflow-hidden flex justify-center items-center">
@@ -88,7 +87,7 @@ function Sidebar() {
               <p className="text-gray-800 font-semibold text-lg">
                 {user.name || user.userName}
               </p>
-              <span className="w-3 h-3 rounded-full absolute  shadow-lg shadow-gray-500"></span>
+              <span className="w-3 h-3 rounded-full absolute shadow-lg shadow-gray-500"></span>
             </div>
           ))}
         </div>
@@ -101,13 +100,11 @@ function Sidebar() {
           <h1 className="text-gray-700 font-bold text-[25px]">
             Hi, {userData.name || "user"}
           </h1>
-          <div className="w-[60px] shadow-lg shadow-gray-500 h-[60px] rounded-full overflow-hidden flex justify-center items-center cursor-pointer bg-white">
-            <img
-              src={userData.image || dp}
-              className="h-[100%]"
-              alt=""
-              onClick={() => navigate("/profile")}
-            />
+          <div
+            className="w-[60px] shadow-lg shadow-gray-500 h-[60px] rounded-full overflow-hidden flex justify-center items-center cursor-pointer bg-white"
+            onClick={() => navigate("/profile")}
+          >
+            <img src={userData.image || dp} className="h-[100%]" alt="" />
           </div>
         </div>
 
@@ -170,9 +167,7 @@ function Sidebar() {
           <div
             key={user._id}
             className="w-[95%] h-[60px] flex items-center gap-5 shadow-lg shadow-gray-500 rounded-full bg-white hover:bg-[#78cae5] cursor-pointer"
-            onClick={() => {
-              dispatch(setSelectedUser(user));
-            }}
+            onClick={() => dispatch(setSelectedUser(user))}
           >
             <div className="relative rounded-full shadow-gray-500 shadow-lg bg-white flex mt-2">
               <div className="w-[60px] h-[60px] rounded-full overflow-hidden flex justify-center items-center">
