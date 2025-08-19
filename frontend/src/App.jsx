@@ -4,7 +4,7 @@ import SignUp from "./pages/SignUp";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
-import getCurrentUser from "./customHooks/getCurrentUser";
+import useCurrentUser from "../customHooks/useCurrentUser";
 import getOtherUsers from "./customHooks/getOtherUsers";
 import { useDispatch, useSelector } from "react-redux";
 import { io } from "socket.io-client";
@@ -17,7 +17,7 @@ function App() {
 
   // Load current user & other users
   useEffect(() => {
-    getCurrentUser();
+    useCurrentUser();
     getOtherUsers();
   }, []);
 
