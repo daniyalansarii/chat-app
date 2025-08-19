@@ -1,7 +1,6 @@
 import { Server } from "socket.io";
 
 let io;
-const onlineUsers = new Map(); // userId => socketId
 
 export const initSocket = (server, frontendUrl) => {
   io = new Server(server, {
@@ -13,22 +12,35 @@ export const initSocket = (server, frontendUrl) => {
 
   io.on("connection", (socket) => {
     const userId = socket.handshake.query.userId;
+
     if (userId) {
-      onlineUsers.set(userId, socket.id);
-      io.emit("getOnlineUsers", Array.from(onlineUsers.keys()));
+      // ✅ Join room named by userId
+      socket.join(userId);
+      console.log(`🔌 User connected: ${userId} | Socket ID: ${socket.id}`);
+
+      // ✅ Broadcast online users (optional)
+      const onlineUserIds = Array.from(io.sockets.adapter.rooms.keys()).filter(
+        (room) => io.sockets.adapter.rooms.get(room)?.has(room) === false // exclude socket IDs
+      );
+      io.emit("getOnlineUsers", onlineUserIds);
     }
 
     socket.on("disconnect", () => {
-      if (userId) {
-        onlineUsers.delete(userId);
-        io.emit("getOnlineUsers", Array.from(onlineUsers.keys()));
-      }
+      console.log(`❌ User disconnected: ${userId} | Socket ID: ${socket.id}`);
+
+      // ✅ Broadcast updated online users
+      const onlineUserIds = Array.from(io.sockets.adapter.rooms.keys()).filter(
+        (room) => io.sockets.adapter.rooms.get(room)?.has(room) === false
+      );
+      io.emit("getOnlineUsers", onlineUserIds);
     });
   });
 };
 
-export const getReceiverSocketId = (userId) => {
-  return onlineUsers.get(userId);
+export const emitToUser = (userId, event, payload) => {
+  if (io) {
+    io.to(userId).emit(event, payload);
+  }
 };
 
 export { io };
