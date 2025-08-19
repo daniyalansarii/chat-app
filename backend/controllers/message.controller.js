@@ -1,7 +1,7 @@
 import uploadOnCloudinary from "../config/cloudinary.js";
 import Conversation from "../models/conversation.model.js";
 import Message from "../models/message.model.js";
-import { getReceiverSocketId, io } from "../socket/socket.js";
+import { emitToUser } from "../socket/socket.js";
 
 export const sendMessage = async (req, res) => {
   try {
@@ -38,17 +38,9 @@ export const sendMessage = async (req, res) => {
       await conversation.save();
     }
 
-    // Emit to receiver if online
-    const receiverSocketId = getReceiverSocketId(receiver.toString());
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage);
-    }
-
-    // Emit to sender for instant UI update
-    const senderSocketId = getReceiverSocketId(sender.toString());
-    if (senderSocketId) {
-      io.to(senderSocketId).emit("newMessage", newMessage);
-    }
+    // ✅ Emit to both users using room-based emit
+    emitToUser(receiver, "newMessage", newMessage);
+    emitToUser(sender, "newMessage", newMessage);
 
     return res.status(201).json(newMessage);
   } catch (error) {
