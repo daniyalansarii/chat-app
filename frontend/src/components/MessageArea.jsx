@@ -1,4 +1,3 @@
-// components/MessageArea.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { IoMdArrowBack } from "react-icons/io";
 import dp from "../assets/dp.webp";
@@ -25,10 +24,9 @@ function MessageArea() {
   const [backendImage, setBackendImage] = useState(null);
   const [showUserProfile, setShowUserProfile] = useState(false);
 
-  const imageRef = useRef();
+  const image = useRef();
   const messagesEndRef = useRef();
 
-  // Scroll to bottom
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -37,9 +35,8 @@ function MessageArea() {
 
   const handleImage = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-    setFrontendImage(URL.createObjectURL(file));
     setBackendImage(file);
+    setFrontendImage(URL.createObjectURL(file));
   };
 
   const handleSendMessage = async (e) => {
@@ -51,18 +48,19 @@ function MessageArea() {
       formData.append("message", input);
       if (backendImage) formData.append("image", backendImage);
 
-      const { data } = await axios.post(
+      const result = await axios.post(
         `${serverUrl}/api/message/send/${selectedUser._id}`,
         formData,
         { withCredentials: true }
       );
 
-      dispatch(addMessage(data)); // Add message to redux
+      dispatch(addMessage(result.data));
+
       setInput("");
       setFrontendImage(null);
       setBackendImage(null);
     } catch (error) {
-      console.error("Send message error:", error);
+      console.log(error);
     }
   };
 
@@ -70,16 +68,16 @@ function MessageArea() {
     setInput((prev) => prev + emojiData.emoji);
   };
 
-  // Listen for real-time messages via socket
+  // Socket listener for real-time messages
   useEffect(() => {
     if (!socket) return;
 
-    const handleNewMessage = (msg) => {
+    const handleNewMessage = (mess) => {
       if (
-        msg.sender === selectedUser?._id ||
-        msg.receiver === selectedUser?._id
+        mess.sender === selectedUser?._id ||
+        mess.receiver === selectedUser?._id
       ) {
-        dispatch(addMessage(msg));
+        dispatch(addMessage(mess));
       }
     };
 
@@ -106,14 +104,10 @@ function MessageArea() {
 
   return (
     <div className="lg:w-[70%] relative flex w-full h-full bg-slate-200 border-l-2 border-gray-300">
-      {/* Chat Column */}
       <div className="w-full h-[100vh] flex flex-col">
         {/* Header */}
         <div className="w-full h-[100px] gap-5 bg-[#2fbdec] rounded-b-[20px] shadow-gray-400 shadow-lg flex items-center px-5">
-          <div
-            className="cursor-pointer"
-            onClick={() => dispatch(setSelectedUser(null))}
-          >
+          <div className="cursor-pointer" onClick={() => dispatch(setSelectedUser(null))}>
             <IoMdArrowBack className="w-6 text-white h-6" />
           </div>
           <div
@@ -127,34 +121,29 @@ function MessageArea() {
           </h1>
         </div>
 
-        {/* Messages */}
+        {/* Chat Area */}
         <div className="w-full h-[80vh] overflow-auto flex flex-col py-[30px] px-5 gap-5">
           {showPicker && (
             <div className="absolute bottom-[120px] left-5 z-50">
-              <EmojiPicker onEmojiClick={onEmojiClick} width={250} height={350} />
+              <EmojiPicker
+                className="shadow-lg"
+                onEmojiClick={onEmojiClick}
+                width={250}
+                height={350}
+              />
             </div>
           )}
-
-          {messages &&
-            messages.map((mess) =>
-              mess.sender === userData._id ? (
-                <SenderMessage
-                  key={mess._id}
-                  image={mess.image}
-                  message={mess.message}
-                />
-              ) : (
-                <ReceiverMessage
-                  key={mess._id}
-                  image={mess.image}
-                  message={mess.message}
-                />
-              )
-            )}
+          {messages.map((mess) =>
+            mess.sender === userData._id ? (
+              <SenderMessage key={mess._id} image={mess.image} message={mess.message} />
+            ) : (
+              <ReceiverMessage key={mess._id} image={mess.image} message={mess.message} />
+            )
+          )}
           <div ref={messagesEndRef}></div>
         </div>
 
-        {/* Input */}
+        {/* Message Input */}
         <div className="w-full lg:w-[70%] h-[100px] fixed bottom-[20px] flex items-center justify-center">
           {frontendImage && (
             <img
@@ -167,13 +156,7 @@ function MessageArea() {
             className="w-[95%] lg:w-[70%] h-[60px] bg-[#2fbdec] rounded-full shadow-gray-400 shadow-lg flex items-center gap-5 px-5"
             onSubmit={handleSendMessage}
           >
-            <input
-              type="file"
-              hidden
-              accept="image/*"
-              ref={imageRef}
-              onChange={handleImage}
-            />
+            <input type="file" hidden accept="image/*" ref={image} onChange={handleImage} />
             <div onClick={() => setShowPicker((prev) => !prev)}>
               <MdOutlineEmojiEmotions className="w-6 h-6 text-white cursor-pointer" />
             </div>
@@ -184,7 +167,7 @@ function MessageArea() {
               className="w-full bg-transparent h-full px-[10px] outline-none border-0 text-[19px] text-white placeholder:text-white"
               placeholder="Message"
             />
-            <div onClick={() => imageRef.current.click()}>
+            <div onClick={() => image.current.click()}>
               <FaImage className="w-6 h-6 text-white cursor-pointer" />
             </div>
             {(input.trim() || backendImage) && (
@@ -206,14 +189,8 @@ function MessageArea() {
             >
               ×
             </button>
-            <img
-              src={selectedUser?.image || dp}
-              alt="User"
-              className="w-24 h-24 rounded-full mx-auto mb-4"
-            />
-            <h2 className="text-xl font-semibold">
-              {selectedUser?.name || "User"}
-            </h2>
+            <img src={selectedUser?.image || dp} alt="User" className="w-24 h-24 rounded-full mx-auto mb-4" />
+            <h2 className="text-xl font-semibold">{selectedUser?.name || "User"}</h2>
           </div>
         </div>
       )}
